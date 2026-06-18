@@ -401,7 +401,7 @@
                         <option value="space">空格</option>
                     </select>
                     <input type="text" id="fromChar" class="custom-char-input" placeholder="字符" disabled maxlength="10">
-                    <button class="clean-btn" onclick="cleanText('input')" title="清除其他符号">
+                    <button class="clean-btn" onclick="cleanText('input')" title="清除选中的符号">
                         <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                     </button>
                 </div>
@@ -420,7 +420,7 @@
                         <option value="space">空格</option>
                     </select>
                     <input type="text" id="toChar" class="custom-char-input" placeholder="字符" maxlength="10">
-                    <button class="clean-btn" onclick="cleanText('output')" title="清除其他符号">
+                    <button class="clean-btn" onclick="cleanText('output')" title="清除选中的符号">
                         <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                     </button>
                 </div>
@@ -545,7 +545,7 @@
             }
         }
 
-        // 清除其他符号：保留当前分隔符，去除其他常见分隔符
+        // 清除选中的符号：删除当前选中的分隔符/字符（类似Excel查找替换删除特定词）
         function cleanText(target) {
             const isInput = target === 'input';
             const textArea = isInput ? inputText : outputText;
@@ -557,16 +557,37 @@
 
             const mode = isInput ? fromMode.value : toMode.value;
             const customChar = isInput ? fromChar.value : toChar.value;
-            const keepSep = getSeparator(mode, customChar);
+            let result;
 
-            // 用所有常见分隔符分割文本，再以目标分隔符重新组合
-            // 常见分隔符：换行、逗号、分号、制表符、竖线、空格
-            const items = text.split(/[\r\n,;\t|]+/).map(item => item.trim()).filter(item => item !== '');
-            const result = items.join(keepSep);
+            // 根据当前选中的模式，删除对应的分隔符/字符
+            switch (mode) {
+                case 'newline':
+                    // 删除所有换行符，将多行合并为一行
+                    result = text.replace(/\r?\n/g, '');
+                    break;
+                case 'space':
+                    // 删除所有空格
+                    result = text.replace(/ /g, '');
+                    break;
+                case 'char':
+                    // 删除指定的自定义字符
+                    if (!customChar) {
+                        showToast('请先输入要清除的字符');
+                        return;
+                    }
+                    // 对自定义字符进行正则转义，避免特殊字符导致正则错误
+                    var escaped = customChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    result = text.replace(new RegExp(escaped, 'g'), '');
+                    break;
+                default:
+                    result = text;
+            }
 
             textArea.value = result;
             updateStats();
-            showToast('已清除其他符号');
+
+            var modeLabel = mode === 'newline' ? '换行符' : mode === 'space' ? '空格' : '"' + customChar + '"';
+            showToast('已清除所有' + modeLabel);
         }
 
         // 执行转换
